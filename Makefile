@@ -1,4 +1,4 @@
-CXXFLAGS=-Os -DF_CPU=16000000UL -mmcu=atmega328p
+CXXFLAGS=-Ofast -DF_CPU=16000000UL -mmcu=atmega328p
 PROCESSOR=atmega168
 LDFLAGS=-mmcu=$(PROCESSOR)
 CXX=avr-gcc
