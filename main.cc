@@ -6,24 +6,25 @@
 
 volatile unsigned int osc[VOICES];
 volatile unsigned int step[VOICES];
-volatile unsigned char shift[VOICES];
+volatile unsigned char level[VOICES];
 
 volatile unsigned char next = 0;
 
 ISR(TIMER1_COMPA_vect) {
   PORTD = next;
-  long sample = 0;
+  char sample = 0;
   for( int i=0; i<VOICES; i++ ) {
     unsigned int v = osc[i] + step[i];
+    unsigned char v_high = v >> 8;
     osc[i] = v;
-    sample += (v >> shift[i]);
+    sample += (v_high * level[i]) >> 8;
   }
-  next = sample >> 10;
+  next = sample;
 }
 
 void play( int voice, unsigned int s ) {
   step[voice] = s;
-  shift[voice] = 0;
+  level[voice] = 64;
   if( s == 0 ) {
     osc[voice] = 0;
   }
@@ -51,7 +52,7 @@ int main(void) {
   long i = 0;
   for( ;; ) {
     i++;
-    shift[2] = (i >> 12) & 0b11;
+    level[2] = ((i >> 9) & 0b111111);
   }
 
 }
