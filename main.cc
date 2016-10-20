@@ -65,16 +65,12 @@ int main(void) {
   sei();
 
   DDRD = 0xFF;
-  //play( 0, 61 );
-  //play( 1, 60 );
-  //play( 0, 2220, 64, 0xFF );
-  //play( 1, 2200, 64, 0xFF );
-  //play( 2, 440, 64, 0xFF );
-  //play( 3, 445, 64, 0xFF );
-  //play( 3, 0 );
 
   for( ;; ) {
-    play( 0, time, 64, 0xFF );
+    play( 0, time/8, 64, 0xFF );
+    play( 1, (time + 10000) / 8, 64, 0xFF );
+    play( 2, (time + 20000) / 8, 64, 0xFF );
+    play( 3, (65535 - time) / 8, 64, 0xFF );
   }
 
   //oscx[2].mask = 0xFF;
