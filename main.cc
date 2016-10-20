@@ -15,6 +15,8 @@ volatile oscillator oscx[VOICES];
 
 volatile unsigned char next = 0;
 
+volatile unsigned int time = 0;
+
 ISR(TIMER1_COMPA_vect) {
   PORTD = next;
   char sample = 0;
@@ -34,6 +36,7 @@ ISR(TIMER1_COMPA_vect) {
     sample += result;
   }
   next = sample;
+  time++;
 }
 
 void play(
@@ -42,7 +45,7 @@ void play(
     unsigned char volume,
     unsigned char mask
   ) {
-  oscx[voice].rate = long(freq10) * 65536L / 500000L;
+  oscx[voice].rate = long(freq10) * 2048L / 15625L;
   oscx[voice].volume = volume;
   oscx[voice].mask = mask;
   if( freq10 == 0 ) {
@@ -52,27 +55,26 @@ void play(
 
 int main(void) {
 
-  TCCR1A = 0; // Reset control registers timer1 /not needed, safety
-  TCCR1B = 0; // Reset control registers timer1 // not needed, safety
-  TIMSK1 = 0b00000010; //timer1 output compare match and overflow interrupt enable
-  OCR1A = 320; // Set TOP/compared value (your value) (maximum is 65535 i think)
-  TCCR1B = 0b00001001;  // prescaling=8 CTC-mode (two counts per microsecond)
-
-  TCCR1A = 0b01000000;  //set OCR1A on compare match (output high level level)
-  DDRB |= 0b00000010;  // SET OC1A=PB1= digital pin 9 to output//  OC1A = PB1 (Arduino digital pin #9)
-  // SEEMS THAT GETTING BOTH A INTERRUPT (TIMER1_COMPA_vect) AND a output pinchange isnt possible.. I havent managed // to anyway
+  TCCR1A = 0; // clear control register
+  TCCR1B = 0; // clear control register
+  TIMSK1 = 0b00000010; //timer1 OC1A interrupt enabled
+  OCR1A = 320; // Set TOP
+  TCCR1B = 0b00001001;  // prescaling=1 CTC mode
+  TCCR1A = 0b01000000;  // toggle pin on OCR1A
+  DDRB |= 0b00000010;  // enabled output
   sei();
 
   DDRD = 0xFF;
   //play( 0, 61 );
   //play( 1, 60 );
-  play( 0, 2220, 64, 0xFF );
-  play( 1, 2200, 64, 0xFF );
-  play( 2, 440, 64, 0xFF );
-  play( 3, 445, 64, 0xFF );
+  //play( 0, 2220, 64, 0xFF );
+  //play( 1, 2200, 64, 0xFF );
+  //play( 2, 440, 64, 0xFF );
+  //play( 3, 445, 64, 0xFF );
   //play( 3, 0 );
 
   for( ;; ) {
+    play( 0, time, 64, 0xFF );
   }
 
   //oscx[2].mask = 0xFF;
