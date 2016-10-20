@@ -4,9 +4,14 @@
 
 #define VOICES 4
 
-volatile unsigned int osc[VOICES];
-volatile unsigned int step[VOICES];
-volatile unsigned char level[VOICES];
+struct oscillator {
+  volatile unsigned int phase;
+  volatile unsigned int rate;
+  volatile unsigned char volume;
+  volatile unsigned char mask;
+};
+
+volatile oscillator oscx[VOICES];
 
 volatile unsigned char next = 0;
 
@@ -14,19 +19,34 @@ ISR(TIMER1_COMPA_vect) {
   PORTD = next;
   char sample = 0;
   for( int i=0; i<VOICES; i++ ) {
-    unsigned int v = osc[i] + step[i];
+    unsigned int v = oscx[i].phase + oscx[i].rate;
     unsigned char v_high = v >> 8;
-    osc[i] = v;
-    sample += (v_high * level[i]) >> 8;
+    v_high &= oscx[i].mask;
+    oscx[i].phase = v;
+    unsigned char result;
+    asm(
+      "mul %1, %2\n"
+      "mov %0, r1\n"
+      : "=r" (result)
+      : "r" (oscx[i].volume), "r" (v_high)
+      : "r0" , "r1"
+    );
+    sample += result;
   }
   next = sample;
 }
 
-void play( int voice, unsigned int s ) {
-  step[voice] = s;
-  level[voice] = 64;
-  if( s == 0 ) {
-    osc[voice] = 0;
+void play(
+    int voice,
+    unsigned int freq10,
+    unsigned char volume,
+    unsigned char mask
+  ) {
+  oscx[voice].rate = long(freq10) * 65536L / 500000L;
+  oscx[voice].volume = volume;
+  oscx[voice].mask = mask;
+  if( freq10 == 0 ) {
+    oscx[voice].phase = 0;
   }
 }
 
@@ -44,15 +64,24 @@ int main(void) {
   sei();
 
   DDRD = 0xFF;
-  play( 0, 61 );
-  play( 1, 60 );
-  play( 2, 480 );
+  //play( 0, 61 );
+  //play( 1, 60 );
+  play( 0, 2220, 64, 0xFF );
+  play( 1, 2200, 64, 0xFF );
+  play( 2, 440, 64, 0xFF );
+  play( 3, 445, 64, 0xFF );
   //play( 3, 0 );
 
-  long i = 0;
   for( ;; ) {
-    i++;
-    level[2] = ((i >> 9) & 0b111111);
   }
+
+  //oscx[2].mask = 0xFF;
+
+  //long i = 0;
+  //for( ;; ) {
+  //  i++;
+  //  oscx[2].volume = ((i >> 9) & 0b1111111);
+  //  oscx[2].mask = i >> 14;
+  //}
 
 }
