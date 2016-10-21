@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#include <avr/pgmspace.h>
 
 #include "serial.h"
 
@@ -55,7 +56,7 @@ void play(
   }
 }
 
-unsigned long notes[] = {
+const unsigned long notes[] = {
   82, 87, 92, 97, 103, 109, 116, 122, 130, 138, 146, 154,
   164, 173, 184, 194, 206, 218, 231, 245, 260, 275, 291, 309,
   327, 346, 367, 389, 412, 437, 462, 490, 519, 550, 583, 617,
@@ -83,38 +84,40 @@ int main(void) {
   DDRD = 0xFF;
 
   serialSetup( 31250 );
+
+  unsigned char note_voices[256];
+  unsigned char voice_notes[4];
+
+  voice_notes[0] = 255;
+  voice_notes[1] = 255;
+  voice_notes[2] = 255;
+  voice_notes[3] = 255;
+
   for( ;; ) {
     unsigned char cmd = serialRead();
     if( cmd == 0x80 ) {
-      play( 0, 0, 0, 0 );
+      unsigned char note = serialRead();
+      int voice = note_voices[ note ];
+      if( voice ) {
+        voice--;
+        play( voice, 0, 0, 0 );
+        note_voices[note] = 0;
+        voice_notes[voice] = 255;
+      }
     } else if( cmd == 0x90 ) {
       unsigned char note = serialRead();
-      unsigned char vol = serialRead();
-      play( 0, notes[note], vol, 0xFF );
+      unsigned char vol = serialRead() >> 1;
+      if( note_voices[note] ) {
+        continue;
+      }
+      for( int voice = 0; voice<4;voice++ ) {
+        if( voice_notes[voice] == 255 ) {
+          voice_notes[voice] = note;
+          note_voices[note] = voice + 1;
+          play( voice, notes[note], vol, 0xFF );
+          break;
+        }
+      }
     }
   }
-
-  unsigned char note = 0;
-  unsigned int last_time = time;
-  for( ;; ) {
-    unsigned int t = time;
-    if( (t ^ last_time) & 0b1110000000000000 ) {
-      note ++;
-      play( 0, notes[note & 0b1111111], 64, 0x80 );
-    }
-    last_time = t;
-    //play( 1, (time + 10000) / 8, 64, 0xFF );
-    //play( 2, (time + 20000) / 8, 64, 0xFF );
-    //play( 3, (65535 - time) / 8, 64, 0xFF );
-  }
-
-  //oscx[2].mask = 0xFF;
-
-  //long i = 0;
-  //for( ;; ) {
-  //  i++;
-  //  oscx[2].volume = ((i >> 9) & 0b1111111);
-  //  oscx[2].mask = i >> 14;
-  //}
-
 }
