@@ -15,9 +15,11 @@ $(PROGNAME).hex: $(PROGNAME)
 upload: $(PROGNAME).hex
 	avrdude -v -carduino -p$(PROCESSOR) -P$(COMPORT) -b$(BAUD) -D -Uflash:w:$(PROGNAME).hex:i
 
-main.o: main.cc
+serial.o: serial.cc serial.h
 
-$(PROGNAME): main.o
+main.o: main.cc serial.h
+
+$(PROGNAME): main.o serial.o
 
 clean:
 	$(RM) *.hex

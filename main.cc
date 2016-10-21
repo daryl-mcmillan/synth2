@@ -2,6 +2,8 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
+#include "serial.h"
+
 #define VOICES 4
 
 struct oscillator {
@@ -79,6 +81,18 @@ int main(void) {
   sei();
 
   DDRD = 0xFF;
+
+  serialSetup( 31250 );
+  for( ;; ) {
+    unsigned char cmd = serialRead();
+    if( cmd == 0x80 ) {
+      play( 0, 0, 0, 0 );
+    } else if( cmd == 0x90 ) {
+      unsigned char note = serialRead();
+      unsigned char vol = serialRead();
+      play( 0, notes[note], vol, 0xFF );
+    }
+  }
 
   unsigned char note = 0;
   unsigned int last_time = time;
