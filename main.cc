@@ -85,19 +85,21 @@ int main(void) {
 
   serialSetup( 31250 );
 
-  char voice_mask = 0;
+  unsigned char voice_available = 0xF;
 
   const unsigned char voice_lookup[] = {
-    3, 3, 3, 3, 3, 3, 3, 3,
-    2, 2, 2, 2,
+    255,
+    0,
     1, 1,
-    0
+    2, 2, 2, 2,
+    3, 3, 3, 3, 3, 3, 3, 3
   };
 
   unsigned char note_voices[128];
   for( int i=0; i<128; i++ ) {
     note_voices[i] = 0;
   }
+
   for( ;; ) {
     unsigned char cmd = serialRead();
     if( cmd == 0x80 ) {
@@ -110,7 +112,7 @@ int main(void) {
         voice--;
         play( voice, 0, 0, 0 );
         note_voices[ note ] = 0;
-        voice_mask &=  ~ (1 << voice);
+        voice_available |= 1 << voice;
       }
     } else if( cmd == 0x90 ) {
       unsigned char note = serialRead();
@@ -121,10 +123,10 @@ int main(void) {
       if( note_voices[note] ) {
         continue;
       }
-      if( voice_mask < 16 ) {
-        unsigned char voice = voice_lookup[voice_mask];
+      if( voice_available ) {
+        unsigned char voice = voice_lookup[voice_available];
         note_voices[ note ] = voice + 1;
-        voice_mask |= 1 << voice;
+        voice_available &= ~(1 << voice);
         play( voice, notes[note], vol, 0xFF );
       }
     }
