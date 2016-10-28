@@ -42,33 +42,33 @@ ISR(TIMER1_COMPA_vect) {
   time++;
 }
 
+const unsigned int notes[] = {
+  11, 11, 12, 13, 14, 14, 15, 16, 17, 18, 19, 20,
+  21, 23, 24, 25, 27, 29, 30, 32, 34, 36, 38, 40,
+  43, 45, 48, 51, 54, 57, 61, 64, 68, 72, 76, 81,
+  86, 91, 96, 102, 108, 114, 121, 128, 136, 144, 153, 162,
+  171, 182, 192, 204, 216, 229, 242, 257, 272, 288, 306, 324,
+  343, 363, 385, 408, 432, 458, 485, 514, 544, 577, 611, 647,
+  686, 727, 770, 816, 864, 915, 970, 1028, 1089, 1153, 1222, 1295,
+  1372, 1453, 1540, 1631, 1728, 1831, 1940, 2055, 2177, 2307, 2444, 2589,
+  2743, 2906, 3079, 3262, 3456, 3662, 3880, 4110, 4355, 4614, 4888, 5179,
+  5487, 5813, 6159, 6525, 6913, 7324, 7759, 8221, 8710, 9227, 9776, 10357,
+  10973, 11626, 12317, 13050, 13826, 14648, 15519, 16441
+};
+
 void play(
     int voice,
-    unsigned long freq10,
+    unsigned int rate,
     unsigned char volume,
     unsigned char mask
   ) {
-  oscx[voice].rate = freq10 * 2048L / 15625L;
+  oscx[voice].rate = rate;
   oscx[voice].volume = volume;
   oscx[voice].mask = mask;
-  if( freq10 == 0 ) {
+  if( rate == 0 ) {
     oscx[voice].phase = 0;
   }
 }
-
-const unsigned long notes[] = {
-  82, 87, 92, 97, 103, 109, 116, 122, 130, 138, 146, 154,
-  164, 173, 184, 194, 206, 218, 231, 245, 260, 275, 291, 309,
-  327, 346, 367, 389, 412, 437, 462, 490, 519, 550, 583, 617,
-  654, 693, 734, 778, 824, 873, 925, 980, 1038, 1100, 1165, 1235,
-  1308, 1386, 1468, 1556, 1648, 1746, 1850, 1960, 2077, 2200, 2331, 2469,
-  2616, 2772, 2937, 3111, 3296, 3492, 3700, 3920, 4153, 4400, 4662, 4939,
-  5233, 5544, 5873, 6223, 6593, 6985, 7400, 7840, 8306, 8800, 9323, 9878,
-  10465, 11087, 11747, 12445, 13185, 13969, 14800, 15680, 16612, 17600, 18647, 19755,
-  20930, 22175, 23493, 24890, 26370, 27938, 29600, 31360, 33224, 35200, 37293, 39511,
-  41860, 44349, 46986, 49780, 52740, 55877, 59199, 62719, 66449, 70400, 74586, 79021,
-  83720, 88698, 93973, 99561, 105481, 111753, 118398, 125439
-};
 
 int main(void) {
 
@@ -85,38 +85,47 @@ int main(void) {
 
   serialSetup( 31250 );
 
-  unsigned char note_voices[256];
-  unsigned char voice_notes[4];
+  char voice_mask = 0;
 
-  voice_notes[0] = 255;
-  voice_notes[1] = 255;
-  voice_notes[2] = 255;
-  voice_notes[3] = 255;
+  const char voice_lookup[] = {
+    3, 3, 3, 3, 3, 3, 3, 3,
+    2, 2, 2, 2,
+    1, 1,
+    0
+  };
 
+  unsigned char note_voices[128];
+  for( int i=0; i<128; i++ ) {
+    note_voices[i] = 0;
+  }
   for( ;; ) {
     unsigned char cmd = serialRead();
     if( cmd == 0x80 ) {
       unsigned char note = serialRead();
+      if( note & 0x80 ) continue;
+      unsigned char vol = serialRead();
+      if( vol & 0x80 ) continue;
       int voice = note_voices[ note ];
       if( voice ) {
         voice--;
         play( voice, 0, 0, 0 );
-        note_voices[note] = 0;
-        voice_notes[voice] = 255;
+        note_voices[ note ] = 0;
+        voice_mask &=  ~ (1 << voice);
       }
     } else if( cmd == 0x90 ) {
       unsigned char note = serialRead();
-      unsigned char vol = serialRead() >> 1;
+      if( note & 0x80 ) continue;
+      unsigned char vol = serialRead();
+      if( vol & 0x80 ) continue;
+      vol = vol >> 1;
       if( note_voices[note] ) {
         continue;
       }
-      for( int voice = 0; voice<4;voice++ ) {
-        if( voice_notes[voice] == 255 ) {
-          voice_notes[voice] = note;
-          note_voices[note] = voice + 1;
-          play( voice, notes[note], vol, 0xFF );
-          break;
-        }
+      if( voice_mask < 16 ) {
+        char voice = voice_lookup[voice_mask];
+        note_voices[ note ] = voice + 1;
+        voice_mask |= 1 << voice;
+        play( voice, notes[note], vol, 0xFF );
       }
     }
   }
