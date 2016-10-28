@@ -57,7 +57,7 @@ const unsigned int notes[] = {
 };
 
 void play(
-    int voice,
+    unsigned char voice,
     unsigned int rate,
     unsigned char volume,
     unsigned char mask
@@ -87,7 +87,7 @@ int main(void) {
 
   char voice_mask = 0;
 
-  const char voice_lookup[] = {
+  const unsigned char voice_lookup[] = {
     3, 3, 3, 3, 3, 3, 3, 3,
     2, 2, 2, 2,
     1, 1,
@@ -105,7 +105,7 @@ int main(void) {
       if( note & 0x80 ) continue;
       unsigned char vol = serialRead();
       if( vol & 0x80 ) continue;
-      int voice = note_voices[ note ];
+      unsigned char voice = note_voices[ note ];
       if( voice ) {
         voice--;
         play( voice, 0, 0, 0 );
@@ -122,7 +122,7 @@ int main(void) {
         continue;
       }
       if( voice_mask < 16 ) {
-        char voice = voice_lookup[voice_mask];
+        unsigned char voice = voice_lookup[voice_mask];
         note_voices[ note ] = voice + 1;
         voice_mask |= 1 << voice;
         play( voice, notes[note], vol, 0xFF );
